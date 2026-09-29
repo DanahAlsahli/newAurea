@@ -16,28 +16,35 @@ public class StudioController {
     }
 
     @PostMapping("/add")
-    public ResponseEntity<?> addStudio(@RequestBody Studio studio) {
-        return ResponseEntity.status(201)
-                .body(studioService.addStudio(studio));
+    public ResponseEntity<?> addStudio(
+            @RequestBody Studio studio) {
+
+        return ResponseEntity
+                .status(201)
+                .body(
+                        studioService.addStudio(studio)
+                );
     }
 
     @GetMapping("/get")
     public ResponseEntity<?> getAllStudios() {
-        return ResponseEntity.status(200)
-                .body(studioService.getAllStudios());
+
+        return ResponseEntity
+                .status(200)
+                .body(
+                        studioService.getAllStudios()
+                );
     }
 
     @GetMapping("/get/{id}")
-    public ResponseEntity<?> getStudioById(@PathVariable Integer id) {
+    public ResponseEntity<?> getStudioById(
+            @PathVariable Integer id) {
 
-        Studio studio = studioService.getStudioById(id);
-
-        if (studio == null) {
-            return ResponseEntity.status(404)
-                    .body("Studio not found");
-        }
-
-        return ResponseEntity.status(200).body(studio);
+        return ResponseEntity
+                .status(200)
+                .body(
+                        studioService.getStudioById(id)
+                );
     }
 
     @PutMapping("/update/{id}")
@@ -45,28 +52,30 @@ public class StudioController {
             @PathVariable Integer id,
             @RequestBody Studio studio) {
 
-        boolean updated = studioService.updateStudio(id, studio);
+        studioService.updateStudio(
+                id,
+                studio
+        );
 
-        if (!updated) {
-            return ResponseEntity.status(404)
-                    .body("Studio not found");
-        }
-
-        return ResponseEntity.status(200)
-                .body("Studio updated successfully");
+        return ResponseEntity
+                .status(200)
+                .body(
+                        "Studio updated successfully"
+                );
     }
 
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<?> deleteStudio(@PathVariable Integer id) {
+    public ResponseEntity<?> deleteStudio(
+            @PathVariable Integer id) {
 
-        boolean deleted = studioService.deleteStudio(id);
+        studioService.deleteStudio(id);
 
-        if (!deleted) {
-            return ResponseEntity.status(404)
-                    .body("Studio not found");
-        }
-
-        return ResponseEntity.status(200)
-                .body("Studio deleted successfully");
+        return ResponseEntity
+                .status(200)
+                .body(
+                        "Studio deleted successfully"
+                );
     }
 }
+
+

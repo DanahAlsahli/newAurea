@@ -1,5 +1,6 @@
 package org.example.aurea.Service;
 
+import org.example.aurea.Api.ApiException;
 import org.example.aurea.Model.Studio;
 import org.example.aurea.Repository.StudioRepository;
 import org.springframework.stereotype.Service;
@@ -16,44 +17,52 @@ public class StudioService {
     }
 
     public Studio addStudio(Studio studio) {
+
         return studioRepository.save(studio);
     }
 
     public List<Studio> getAllStudios() {
+
         return studioRepository.findAll();
     }
 
     public Studio getStudioById(Integer id) {
-        return studioRepository.findById(id).orElse(null);
+
+        return studioRepository.findById(id)
+                .orElseThrow(() ->
+                        new ApiException("Studio not found"));
     }
 
-    public boolean updateStudio(Integer id, Studio studio) {
+    public void updateStudio(
+            Integer id,
+            Studio studio) {
 
-        Studio existingStudio = studioRepository.findById(id).orElse(null);
+        Studio existingStudio =
+                studioRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Studio not found"));
 
-        if (existingStudio == null) {
-            return false;
-        }
+        existingStudio.setProjectId(
+                studio.getProjectId());
 
-        existingStudio.setProjectId(studio.getProjectId());
-        existingStudio.setType(studio.getType());
-        existingStudio.setStatus(studio.getStatus());
+        existingStudio.setType(
+                studio.getType());
+
+        existingStudio.setStatus(
+                studio.getStatus());
 
         studioRepository.save(existingStudio);
-
-        return true;
     }
 
-    public boolean deleteStudio(Integer id) {
+    public void deleteStudio(Integer id) {
 
-        Studio existingStudio = studioRepository.findById(id).orElse(null);
-
-        if (existingStudio == null) {
-            return false;
-        }
+        Studio existingStudio =
+                studioRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Studio not found"));
 
         studioRepository.delete(existingStudio);
-
-        return true;
     }
 }
+
+

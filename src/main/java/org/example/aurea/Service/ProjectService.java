@@ -1,5 +1,6 @@
 package org.example.aurea.Service;
 
+import org.example.aurea.Api.ApiException;
 import org.example.aurea.Model.AIAnalysis;
 import org.example.aurea.Model.Project;
 import org.example.aurea.Model.Recommendation;
@@ -8,10 +9,10 @@ import org.example.aurea.Repository.ProjectRepository;
 import org.example.aurea.Repository.RecommendationRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.example.aurea.Service.AIAnalysisService;
 
 @Service
 public class ProjectService {
@@ -19,44 +20,33 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final AIAnalysisRepository aiAnalysisRepository;
     private final RecommendationRepository recommendationRepository;
-    private final AIAnalysisService aiAnalysisService;
 
     public ProjectService(
             ProjectRepository projectRepository,
             AIAnalysisRepository aiAnalysisRepository,
-            RecommendationRepository recommendationRepository,
-            AIAnalysisService aiAnalysisService) {
+            RecommendationRepository recommendationRepository) {
 
         this.projectRepository = projectRepository;
         this.aiAnalysisRepository = aiAnalysisRepository;
         this.recommendationRepository = recommendationRepository;
-        this.aiAnalysisService = aiAnalysisService;
     }
 
-    // Create
     public Project addProject(Project project) {
         return projectRepository.save(project);
     }
 
-    // Read All
     public List<Project> getAllProjects() {
         return projectRepository.findAll();
     }
 
-    // Read By ID
     public Project getProjectById(Integer id) {
-        return projectRepository.findById(id).orElse(null);
+
+        return projectRepository.findById(id).orElseThrow(() -> new ApiException("Project not found"));
     }
 
-    // Update
-    public boolean updateProject(Integer id, Project project) {
+    public void updateProject(Integer id, Project project) {
 
-        Project oldProject =
-                projectRepository.findById(id).orElse(null);
-
-        if (oldProject == null) {
-            return false;
-        }
+        Project oldProject = projectRepository.findById(id).orElseThrow(() -> new ApiException("Project not found"));
 
         oldProject.setUserId(project.getUserId());
         oldProject.setName(project.getName());
@@ -65,65 +55,63 @@ public class ProjectService {
         oldProject.setStatus(project.getStatus());
 
         projectRepository.save(oldProject);
-
-        return true;
     }
 
-    // Delete
-    public boolean deleteProject(Integer id) {
+    public void deleteProject(Integer id) {
 
-        Project project = projectRepository.findById(id).orElse(null);
+        Project project = projectRepository.findById(id).orElseThrow(() -> new ApiException("Project not found"));
 
-        if (project == null) {
-            return false;
-        }
         projectRepository.delete(project);
-
-        return true;
     }
 
-    // Extra Endpoint: Project Dashboard
     public Map<String, Object> getProjectDashboard(Integer id) {
 
-        Project project = projectRepository.findById(id).orElse(null);
-
-        if (project == null) {
-            throw new RuntimeException("Project not found");
-        }
-
+        Project project = projectRepository.findById(id).orElseThrow(() -> new ApiException("Project not found"));
         List<AIAnalysis> analyses = aiAnalysisRepository.findByProjectId(id);
-
         Map<String, Object> dashboard = new HashMap<>();
         dashboard.put("project", project);
         dashboard.put("analyses", analyses);
 
         if (!analyses.isEmpty()) {
+
             AIAnalysis latestAnalysis = analyses.get(analyses.size() - 1);
+
             List<Recommendation> recommendations = recommendationRepository.findByAnalysisId(latestAnalysis.getId());
-            dashboard.put("latestAnalysis", latestAnalysis);
-            dashboard.put("recommendations", recommendations);
+
+            dashboard.put(
+                    "latestAnalysis",
+                    latestAnalysis);
+
+            dashboard.put(
+                    "recommendations",
+                    recommendations);
 
         } else {
-            dashboard.put("latestAnalysis", null);
-            dashboard.put("recommendations", List.of());
+
+            dashboard.put(
+                    "latestAnalysis",
+                    null);
+
+            dashboard.put(
+                    "recommendations",
+                    List.of());
         }
+
         return dashboard;
     }
 
-    // =========================
-// Aurea Project Intelligence
-// =========================
-
     public Map<String, Object> getProjectHealth(Integer id) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
         List<AIAnalysis> analyses =
                 aiAnalysisRepository.findByProjectId(id);
 
-        Map<String, Object> health = new HashMap<>();
+        Map<String, Object> health =
+                new HashMap<>();
 
         health.put("projectId", id);
         health.put("projectName", project.getName());
@@ -133,7 +121,8 @@ public class ProjectService {
 
             health.put("healthScore", 0);
             health.put("healthLevel", "UNKNOWN");
-            health.put("message",
+            health.put(
+                    "message",
                     "No AI analysis available yet.");
 
         } else {
@@ -141,39 +130,58 @@ public class ProjectService {
             AIAnalysis latest =
                     analyses.get(analyses.size() - 1);
 
-            int score = latest.getScore() != null
-                    ? latest.getScore()
-                    : 0;
+            int score =
+                    latest.getScore() != null
+                            ? latest.getScore()
+                            : 0;
 
             health.put("healthScore", score);
 
             if (score >= 80) {
-                health.put("healthLevel", "HEALTHY");
+
+                health.put(
+                        "healthLevel",
+                        "HEALTHY");
+
             } else if (score >= 60) {
-                health.put("healthLevel", "STABLE");
+
+                health.put(
+                        "healthLevel",
+                        "STABLE");
+
             } else if (score >= 40) {
-                health.put("healthLevel", "AT_RISK");
+
+                health.put(
+                        "healthLevel",
+                        "AT_RISK");
+
             } else {
-                health.put("healthLevel", "CRITICAL");
+
+                health.put(
+                        "healthLevel",
+                        "CRITICAL");
             }
 
-            health.put("latestAnalysis", latest);
+            health.put(
+                    "latestAnalysis",
+                    latest);
         }
 
         return health;
     }
 
-
     public Map<String, Object> getProjectInsights(Integer id) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
         List<AIAnalysis> analyses =
                 aiAnalysisRepository.findByProjectId(id);
 
-        Map<String, Object> insights = new HashMap<>();
+        Map<String, Object> insights =
+                new HashMap<>();
 
         insights.put("projectId", id);
         insights.put("projectName", project.getName());
@@ -185,74 +193,94 @@ public class ProjectService {
             AIAnalysis latest =
                     analyses.get(analyses.size() - 1);
 
-            insights.put("latestInsight",
+            insights.put(
+                    "latestInsight",
                     latest.getResult());
 
-            insights.put("score",
+            insights.put(
+                    "score",
                     latest.getScore());
 
-            insights.put("strengths",
+            insights.put(
+                    "strengths",
                     latest.getStrengths());
 
-            insights.put("weaknesses",
+            insights.put(
+                    "weaknesses",
                     latest.getWeaknesses());
 
-            insights.put("recommendation",
+            insights.put(
+                    "recommendation",
                     latest.getAiRecommendation());
         }
 
         return insights;
     }
 
-
     public Map<String, Object> getProjectRisks(Integer id) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
         List<AIAnalysis> analyses =
                 aiAnalysisRepository.findByProjectId(id);
 
-        Map<String, Object> risks = new HashMap<>();
+        Map<String, Object> risks =
+                new HashMap<>();
 
         risks.put("projectId", id);
         risks.put("projectName", project.getName());
 
         List<Map<String, Object>> riskItems =
                 analyses.stream()
-                        .filter(a -> a.getWeaknesses() != null)
+                        .filter(a ->
+                                a.getWeaknesses() != null)
                         .map(a -> {
 
                             Map<String, Object> risk =
                                     new HashMap<>();
 
-                            risk.put("analysisId", a.getId());
-                            risk.put("analysisType",
+                            risk.put(
+                                    "analysisId",
+                                    a.getId());
+
+                            risk.put(
+                                    "analysisType",
                                     a.getAnalysisType());
 
-                            risk.put("risk",
+                            risk.put(
+                                    "risk",
                                     a.getWeaknesses());
 
-                            risk.put("score",
+                            risk.put(
+                                    "score",
                                     a.getScore());
 
                             return risk;
+
                         })
                         .toList();
 
-        risks.put("risks", riskItems);
-        risks.put("riskCount", riskItems.size());
+        risks.put(
+                "risks",
+                riskItems);
+
+        risks.put(
+                "riskCount",
+                riskItems.size());
 
         return risks;
     }
 
+    public Map<String, Object> getProjectOpportunities(
+            Integer id) {
 
-    public Map<String, Object> getProjectOpportunities(Integer id) {
-
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
         List<AIAnalysis> analyses =
                 aiAnalysisRepository.findByProjectId(id);
@@ -260,12 +288,18 @@ public class ProjectService {
         Map<String, Object> opportunities =
                 new HashMap<>();
 
-        opportunities.put("projectId", id);
-        opportunities.put("projectName", project.getName());
+        opportunities.put(
+                "projectId",
+                id);
+
+        opportunities.put(
+                "projectName",
+                project.getName());
 
         List<Map<String, Object>> opportunityItems =
                 analyses.stream()
-                        .filter(a -> a.getStrengths() != null)
+                        .filter(a ->
+                                a.getStrengths() != null)
                         .map(a -> {
 
                             Map<String, Object> opportunity =
@@ -284,6 +318,7 @@ public class ProjectService {
                                     a.getStrengths());
 
                             return opportunity;
+
                         })
                         .toList();
 
@@ -294,23 +329,40 @@ public class ProjectService {
         opportunities.put(
                 "opportunityCount",
                 opportunityItems.size());
+
         return opportunities;
     }
 
+    public Map<String, Object> getProjectRecommendations(
+            Integer id) {
 
-    public Map<String, Object> getProjectRecommendations(Integer id) {
-        Project project = projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
-        List<AIAnalysis> analyses = aiAnalysisRepository.findByProjectId(id);
+        List<AIAnalysis> analyses =
+                aiAnalysisRepository.findByProjectId(id);
 
-        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> result =
+                new HashMap<>();
 
-        result.put("projectId", id);
-        result.put("projectName", project.getName());
+        result.put(
+                "projectId",
+                id);
+
+        result.put(
+                "projectName",
+                project.getName());
 
         List<Map<String, Object>> recommendations =
-                analyses.stream().filter(a -> a.getAiRecommendation() != null).map(a -> {
-                            Map<String, Object> recommendation = new HashMap<>();
+                analyses.stream()
+                        .filter(a ->
+                                a.getAiRecommendation() != null)
+                        .map(a -> {
+
+                            Map<String, Object> recommendation =
+                                    new HashMap<>();
 
                             recommendation.put(
                                     "analysisId",
@@ -323,37 +375,67 @@ public class ProjectService {
                             recommendation.put(
                                     "recommendation",
                                     a.getAiRecommendation());
-                            return recommendation;
-                        }).toList();
 
-        result.put("recommendations", recommendations);
+                            return recommendation;
+
+                        })
+                        .toList();
+
+        result.put(
+                "recommendations",
+                recommendations);
+
         return result;
     }
 
+    public Map<String, Object> getProjectPerformance(
+            Integer id) {
 
-    public Map<String, Object> getProjectPerformance(Integer id) {
-        Project project = projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
-        List<AIAnalysis> analyses = aiAnalysisRepository.findByProjectId(id);
-        Map<String, Object> performance = new HashMap<>();
+        List<AIAnalysis> analyses =
+                aiAnalysisRepository.findByProjectId(id);
 
-        performance.put("projectId", id);
-        performance.put("projectName", project.getName());
+        Map<String, Object> performance =
+                new HashMap<>();
+
+        performance.put(
+                "projectId",
+                id);
+
+        performance.put(
+                "projectName",
+                project.getName());
 
         if (analyses.isEmpty()) {
-            performance.put("averageScore", 0);
-            performance.put("analysisCount", 0);
+
+            performance.put(
+                    "averageScore",
+                    0);
+
+            performance.put(
+                    "analysisCount",
+                    0);
 
         } else {
-            double average = analyses.stream()
-                            .filter(a -> a.getScore() != null)
-                            .mapToInt(AIAnalysis::getScore)
+
+            double average =
+                    analyses.stream()
+                            .filter(a ->
+                                    a.getScore() != null)
+                            .mapToInt(
+                                    AIAnalysis::getScore)
                             .average()
                             .orElse(0);
 
             performance.put(
                     "averageScore",
-                    Math.round(average * 100.0) / 100.0);
+                    Math.round(
+                            average * 100.0)
+                            / 100.0);
 
             performance.put(
                     "analysisCount",
@@ -361,23 +443,38 @@ public class ProjectService {
 
             performance.put(
                     "latestScore",
-                    analyses.get(analyses.size() - 1).getScore());
+                    analyses.get(
+                                    analyses.size() - 1)
+                            .getScore());
         }
+
         return performance;
     }
 
+    public Map<String, Object> getProjectForecast(
+            Integer id) {
 
-    public Map<String, Object> getProjectForecast(Integer id) {
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
-        Project project = projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Project not found"));
+        List<AIAnalysis> analyses =
+                aiAnalysisRepository.findByProjectId(id);
 
-        List<AIAnalysis> analyses = aiAnalysisRepository.findByProjectId(id);
+        Map<String, Object> forecast =
+                new HashMap<>();
 
-        Map<String, Object> forecast = new HashMap<>();
-        forecast.put("projectId", id);
-        forecast.put("projectName", project.getName());
+        forecast.put(
+                "projectId",
+                id);
+
+        forecast.put(
+                "projectName",
+                project.getName());
 
         if (analyses.size() < 2) {
+
             forecast.put(
                     "forecastStatus",
                     "INSUFFICIENT_DATA");
@@ -385,84 +482,138 @@ public class ProjectService {
             forecast.put(
                     "message",
                     "More AI analyses are required to generate a forecast.");
+
             return forecast;
         }
 
-        AIAnalysis previous = analyses.get(analyses.size() - 2);
-        AIAnalysis latest = analyses.get(analyses.size() - 1);
+        AIAnalysis previous =
+                analyses.get(
+                        analyses.size() - 2);
 
-        Integer previousScore = previous.getScore();
-        Integer latestScore = latest.getScore();
+        AIAnalysis latest =
+                analyses.get(
+                        analyses.size() - 1);
 
-        if (previousScore == null || latestScore == null) {
+        Integer previousScore =
+                previous.getScore();
+
+        Integer latestScore =
+                latest.getScore();
+
+        if (previousScore == null ||
+                latestScore == null) {
+
             forecast.put(
                     "forecastStatus",
                     "INSUFFICIENT_DATA");
+
             return forecast;
         }
 
-        int change = latestScore - previousScore;
-        forecast.put("previousScore", previousScore);
-        forecast.put("latestScore", latestScore);
-        forecast.put("scoreChange", change);
+        int change =
+                latestScore - previousScore;
+
+        forecast.put(
+                "previousScore",
+                previousScore);
+
+        forecast.put(
+                "latestScore",
+                latestScore);
+
+        forecast.put(
+                "scoreChange",
+                change);
 
         if (change > 0) {
+
             forecast.put(
                     "trend",
                     "IMPROVING");
 
         } else if (change < 0) {
+
             forecast.put(
                     "trend",
                     "DECLINING");
 
         } else {
+
             forecast.put(
                     "trend",
                     "STABLE");
         }
+
         return forecast;
     }
 
-    public Map<String, Object> getEarlyWarnings(Integer id) {
+    public Map<String, Object> getEarlyWarnings(
+            Integer id) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
         List<AIAnalysis> analyses =
                 aiAnalysisRepository
                         .findByProjectIdOrderByCreatedAtDesc(id);
 
-        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> result =
+                new HashMap<>();
 
-        result.put("projectId", id);
-        result.put("projectName", project.getName());
+        result.put(
+                "projectId",
+                id);
 
-        List<Map<String, Object>> warnings = new java.util.ArrayList<>();
+        result.put(
+                "projectName",
+                project.getName());
+
+        List<Map<String, Object>> warnings =
+                new ArrayList<>();
 
         if (analyses.isEmpty()) {
 
-            result.put("status", "NO_DATA");
-            result.put("warnings", warnings);
+            result.put(
+                    "status",
+                    "NO_DATA");
+
+            result.put(
+                    "warnings",
+                    warnings);
 
             return result;
         }
 
-        AIAnalysis latest = analyses.get(0);
+        AIAnalysis latest =
+                analyses.get(0);
 
         // High risk warning
-        if ("HIGH".equalsIgnoreCase(latest.getRiskLevel())) {
+        if ("HIGH".equalsIgnoreCase(
+                latest.getRiskLevel())) {
 
-            Map<String, Object> warning = new HashMap<>();
+            Map<String, Object> warning =
+                    new HashMap<>();
 
-            warning.put("type", "HIGH_RISK");
-            warning.put("severity", "HIGH");
-            warning.put("message",
+            warning.put(
+                    "type",
+                    "HIGH_RISK");
+
+            warning.put(
+                    "severity",
+                    "HIGH");
+
+            warning.put(
+                    "message",
                     "High risk detected in the latest project analysis.");
-            warning.put("riskLevel",
+
+            warning.put(
+                    "riskLevel",
                     latest.getRiskLevel());
-            warning.put("analysisId",
+
+            warning.put(
+                    "analysisId",
                     latest.getId());
 
             warnings.add(warning);
@@ -471,13 +622,15 @@ public class ProjectService {
         // Score deterioration warning
         if (analyses.size() >= 2) {
 
-            AIAnalysis previous = analyses.get(1);
+            AIAnalysis previous =
+                    analyses.get(1);
 
             if (latest.getScore() != null &&
                     previous.getScore() != null) {
 
                 int change =
-                        latest.getScore() - previous.getScore();
+                        latest.getScore()
+                                - previous.getScore();
 
                 if (change <= -10) {
 
@@ -490,7 +643,9 @@ public class ProjectService {
 
                     warning.put(
                             "severity",
-                            change <= -20 ? "HIGH" : "MEDIUM");
+                            change <= -20
+                                    ? "HIGH"
+                                    : "MEDIUM");
 
                     warning.put(
                             "message",
@@ -556,44 +711,91 @@ public class ProjectService {
         return result;
     }
 
-    public Map<String, Object> getExecutiveBrief(Integer id) {
+    public Map<String, Object> getExecutiveBrief(
+            Integer id) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
         List<AIAnalysis> analyses =
                 aiAnalysisRepository
                         .findByProjectIdOrderByCreatedAtDesc(id);
 
-        Map<String, Object> brief = new HashMap<>();
+        Map<String, Object> brief =
+                new HashMap<>();
 
-        brief.put("projectId", id);
-        brief.put("projectName", project.getName());
-        brief.put("industry", project.getIndustry());
-        brief.put("status", project.getStatus());
+        brief.put(
+                "projectId",
+                id);
+
+        brief.put(
+                "projectName",
+                project.getName());
+
+        brief.put(
+                "industry",
+                project.getIndustry());
+
+        brief.put(
+                "status",
+                project.getStatus());
 
         if (analyses.isEmpty()) {
 
-            brief.put("healthScore", 0);
-            brief.put("riskLevel", "UNKNOWN");
-            brief.put("confidence", 0);
-            brief.put("summary",
+            brief.put(
+                    "healthScore",
+                    0);
+
+            brief.put(
+                    "riskLevel",
+                    "UNKNOWN");
+
+            brief.put(
+                    "confidence",
+                    0);
+
+            brief.put(
+                    "summary",
                     "No AI analysis is available yet.");
 
             return brief;
         }
 
-        AIAnalysis latest = analyses.get(0);
+        AIAnalysis latest =
+                analyses.get(0);
 
-        brief.put("healthScore", latest.getScore());
-        brief.put("riskLevel", latest.getRiskLevel());
-        brief.put("confidence", latest.getConfidence());
-        brief.put("keyDriver", latest.getKeyDriver());
-        brief.put("expectedOutcome", latest.getExpectedOutcome());
-        brief.put("strengths", latest.getStrengths());
-        brief.put("risks", latest.getWeaknesses());
-        brief.put("recommendation",
+        brief.put(
+                "healthScore",
+                latest.getScore());
+
+        brief.put(
+                "riskLevel",
+                latest.getRiskLevel());
+
+        brief.put(
+                "confidence",
+                latest.getConfidence());
+
+        brief.put(
+                "keyDriver",
+                latest.getKeyDriver());
+
+        brief.put(
+                "expectedOutcome",
+                latest.getExpectedOutcome());
+
+        brief.put(
+                "strengths",
+                latest.getStrengths());
+
+        brief.put(
+                "risks",
+                latest.getWeaknesses());
+
+        brief.put(
+                "recommendation",
                 latest.getAiRecommendation());
 
         // Trend
@@ -605,23 +807,45 @@ public class ProjectService {
                     latest.getScore()
                             - analyses.get(1).getScore();
 
-            brief.put("scoreChange", change);
+            brief.put(
+                    "scoreChange",
+                    change);
 
             if (change > 0) {
-                brief.put("trend", "IMPROVING");
+
+                brief.put(
+                        "trend",
+                        "IMPROVING");
+
             } else if (change < 0) {
-                brief.put("trend", "DECLINING");
+
+                brief.put(
+                        "trend",
+                        "DECLINING");
+
             } else {
-                brief.put("trend", "STABLE");
+
+                brief.put(
+                        "trend",
+                        "STABLE");
             }
 
         } else {
-            brief.put("scoreChange", 0);
-            brief.put("trend", "NO_BASELINE");
+
+            brief.put(
+                    "scoreChange",
+                    0);
+
+            brief.put(
+                    "trend",
+                    "NO_BASELINE");
         }
 
-        // Recommendations
-        List<Recommendation> recommendations = recommendationRepository.findByAnalysisIdOrderByIdDesc(latest.getId());
+        List<Recommendation> recommendations =
+                recommendationRepository
+                        .findByAnalysisIdOrderByIdDesc(
+                                latest.getId());
+
         brief.put(
                 "recommendations",
                 recommendations);
@@ -633,102 +857,167 @@ public class ProjectService {
         return brief;
     }
 
-    public Map<String, Object> getDecisionMemory(Integer id) {
+    public Map<String, Object> getDecisionMemory(
+            Integer id) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
         List<AIAnalysis> analyses =
                 aiAnalysisRepository
                         .findByProjectIdOrderByCreatedAtDesc(id);
 
-        Map<String, Object> memory = new HashMap<>();
+        Map<String, Object> memory =
+                new HashMap<>();
 
-        memory.put("projectId", id);
-        memory.put("projectName", project.getName());
+        memory.put(
+                "projectId",
+                id);
+
+        memory.put(
+                "projectName",
+                project.getName());
 
         List<Map<String, Object>> decisions =
-                new java.util.ArrayList<>();
+                new ArrayList<>();
 
         for (AIAnalysis analysis : analyses) {
 
             if (!"AI_DECISION_IMPACT"
                     .equals(analysis.getAnalysisType())) {
+
                 continue;
             }
 
             Map<String, Object> decision =
                     new HashMap<>();
 
-            decision.put("analysisId", analysis.getId());
-            decision.put("date", analysis.getCreatedAt());
-            decision.put("impactScore", analysis.getScore());
-            decision.put("riskLevel", analysis.getRiskLevel());
-            decision.put("confidence", analysis.getConfidence());
-            decision.put("keyDriver", analysis.getKeyDriver());
+            decision.put(
+                    "analysisId",
+                    analysis.getId());
+
+            decision.put(
+                    "date",
+                    analysis.getCreatedAt());
+
+            decision.put(
+                    "impactScore",
+                    analysis.getScore());
+
+            decision.put(
+                    "riskLevel",
+                    analysis.getRiskLevel());
+
+            decision.put(
+                    "confidence",
+                    analysis.getConfidence());
+
+            decision.put(
+                    "keyDriver",
+                    analysis.getKeyDriver());
+
             decision.put(
                     "expectedOutcome",
-                    analysis.getExpectedOutcome()
-            );
+                    analysis.getExpectedOutcome());
+
             decision.put(
                     "recommendation",
-                    analysis.getAiRecommendation()
-            );
+                    analysis.getAiRecommendation());
 
             decisions.add(decision);
         }
 
-        memory.put("decisionCount", decisions.size());
-        memory.put("decisions", decisions);
+        memory.put(
+                "decisionCount",
+                decisions.size());
+
+        memory.put(
+                "decisions",
+                decisions);
 
         if (!decisions.isEmpty()) {
-            memory.put("latestDecision", decisions.get(0));
+
+            memory.put(
+                    "latestDecision",
+                    decisions.get(0));
+
         } else {
-            memory.put("latestDecision", null);
+
+            memory.put(
+                    "latestDecision",
+                    null);
         }
 
         return memory;
     }
 
-    public Map<String, Object> getProjectIntelligence(Integer id) {
+    public Map<String, Object> getProjectIntelligence(
+            Integer id) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
         AIAnalysis latest =
                 aiAnalysisRepository
                         .findFirstByProjectIdOrderByCreatedAtDesc(id)
                         .orElse(null);
 
-        Map<String, Object> intelligence = new HashMap<>();
+        Map<String, Object> intelligence =
+                new HashMap<>();
 
-        intelligence.put("projectId", id);
-        intelligence.put("projectName", project.getName());
+        intelligence.put(
+                "projectId",
+                id);
+
+        intelligence.put(
+                "projectName",
+                project.getName());
 
         if (latest == null) {
-            intelligence.put("intelligenceScore", 0);
-            intelligence.put("health", "UNKNOWN");
-            intelligence.put("riskLevel", "UNKNOWN");
-            intelligence.put("confidence", 0);
+
+            intelligence.put(
+                    "intelligenceScore",
+                    0);
+
+            intelligence.put(
+                    "health",
+                    "UNKNOWN");
+
+            intelligence.put(
+                    "riskLevel",
+                    "UNKNOWN");
+
+            intelligence.put(
+                    "confidence",
+                    0);
 
             return intelligence;
         }
 
-        int score = latest.getScore() != null
-                ? latest.getScore()
-                : 0;
+        int score =
+                latest.getScore() != null
+                        ? latest.getScore()
+                        : 0;
 
-        int confidence = latest.getConfidence() != null
-                ? latest.getConfidence()
-                : 0;
+        int confidence =
+                latest.getConfidence() != null
+                        ? latest.getConfidence()
+                        : 0;
 
         int riskPenalty = 0;
 
-        if ("HIGH".equalsIgnoreCase(latest.getRiskLevel())) {
+        if ("HIGH".equalsIgnoreCase(
+                latest.getRiskLevel())) {
+
             riskPenalty = 20;
-        } else if ("MEDIUM".equalsIgnoreCase(latest.getRiskLevel())) {
+
+        } else if ("MEDIUM".equalsIgnoreCase(
+                latest.getRiskLevel())) {
+
             riskPenalty = 10;
         }
 
@@ -740,70 +1029,112 @@ public class ProjectService {
                 );
 
         intelligenceScore =
-                Math.max(0, Math.min(100, intelligenceScore));
+                Math.max(
+                        0,
+                        Math.min(
+                                100,
+                                intelligenceScore));
 
         String health;
 
         if (intelligenceScore >= 80) {
+
             health = "EXCELLENT";
+
         } else if (intelligenceScore >= 60) {
+
             health = "GOOD";
+
         } else if (intelligenceScore >= 40) {
+
             health = "AT_RISK";
+
         } else {
+
             health = "CRITICAL";
         }
 
         intelligence.put(
                 "intelligenceScore",
-                intelligenceScore
-        );
+                intelligenceScore);
 
-        intelligence.put("health", health);
-        intelligence.put("riskLevel", latest.getRiskLevel());
-        intelligence.put("confidence", confidence);
-        intelligence.put("impactScore", score);
-        intelligence.put("keyDriver", latest.getKeyDriver());
+        intelligence.put(
+                "health",
+                health);
+
+        intelligence.put(
+                "riskLevel",
+                latest.getRiskLevel());
+
+        intelligence.put(
+                "confidence",
+                confidence);
+
+        intelligence.put(
+                "impactScore",
+                score);
+
+        intelligence.put(
+                "keyDriver",
+                latest.getKeyDriver());
+
         intelligence.put(
                 "expectedOutcome",
-                latest.getExpectedOutcome()
-        );
+                latest.getExpectedOutcome());
 
         return intelligence;
     }
 
-    public Map<String, Object> getExecutiveInsight(Integer id) {
+    public Map<String, Object> getExecutiveInsight(
+            Integer id) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+        Project project =
+                projectRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ApiException("Project not found"));
 
         AIAnalysis latest =
                 aiAnalysisRepository
                         .findFirstByProjectIdOrderByCreatedAtDesc(id)
                         .orElse(null);
 
-        Map<String, Object> insight = new HashMap<>();
+        Map<String, Object> insight =
+                new HashMap<>();
 
-        insight.put("projectId", id);
-        insight.put("projectName", project.getName());
+        insight.put(
+                "projectId",
+                id);
+
+        insight.put(
+                "projectName",
+                project.getName());
 
         if (latest == null) {
 
             insight.put(
                     "insight",
-                    "No AI analysis is available yet."
-            );
+                    "No AI analysis is available yet.");
 
-            insight.put("priority", "UNKNOWN");
-            insight.put("risk", "UNKNOWN");
-            insight.put("nextAction", "Run an AI project analysis.");
+            insight.put(
+                    "priority",
+                    "UNKNOWN");
+
+            insight.put(
+                    "risk",
+                    "UNKNOWN");
+
+            insight.put(
+                    "nextAction",
+                    "Run an AI project analysis.");
 
             return insight;
         }
 
-        String risk = latest.getRiskLevel();
-        Integer score = latest.getScore();
+        String risk =
+                latest.getRiskLevel();
+
+        Integer score =
+                latest.getScore();
 
         String priority;
 
@@ -840,29 +1171,44 @@ public class ProjectService {
                     "Maintain the current strategy and continue monitoring project performance.";
         }
 
-        insight.put("priority", priority);
-        insight.put("risk", risk);
-        insight.put("score", score);
-        insight.put("confidence", latest.getConfidence());
-        insight.put("keyDriver", latest.getKeyDriver());
+        insight.put(
+                "priority",
+                priority);
+
+        insight.put(
+                "risk",
+                risk);
+
+        insight.put(
+                "score",
+                score);
+
+        insight.put(
+                "confidence",
+                latest.getConfidence());
+
+        insight.put(
+                "keyDriver",
+                latest.getKeyDriver());
 
         insight.put(
                 "expectedOutcome",
-                latest.getExpectedOutcome()
-        );
+                latest.getExpectedOutcome());
 
         insight.put(
                 "insight",
-                latest.getResult()
-        );
+                latest.getResult());
 
         insight.put(
                 "recommendation",
-                latest.getAiRecommendation()
-        );
+                latest.getAiRecommendation());
 
-        insight.put("nextAction", nextAction);
+        insight.put(
+                "nextAction",
+                nextAction);
 
         return insight;
     }
 }
+
+
